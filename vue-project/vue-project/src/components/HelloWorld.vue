@@ -9,9 +9,11 @@
       <textarea
         id="spintax-input"
         v-model="spintaxInput"
+        @input="adjustHeight"
         class="form-control fw-bold"
         rows="5"
         placeholder="Enter your spintax here..."
+        style="overflow: hidden; resize: none;"
       ></textarea>
     </div>
 
@@ -85,6 +87,12 @@ const duplicate = ref(false)
 const displayResultsCount = computed(() => {
   return resultsCount.value === '20' ? 'All' : resultsCount.value;
 });
+
+const adjustHeight = (event) => {
+  const textarea = event.target;
+  textarea.style.height = 'auto';
+  textarea.style.height = `${textarea.scrollHeight}px`;
+};
 
 const generateResults = async () => {
   console.log(Constants.DEFAULT_RESULTS_COUNT)
