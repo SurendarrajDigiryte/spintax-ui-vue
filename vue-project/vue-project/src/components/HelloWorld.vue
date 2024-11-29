@@ -83,7 +83,6 @@ const noData = ref(false)
 const lessData = ref(false)
 const duplicate = ref(false)
 
-// Computed property to display results count
 const displayResultsCount = computed(() => {
   return resultsCount.value === '20' ? 'All' : resultsCount.value;
 });
@@ -93,6 +92,22 @@ const adjustHeight = (event) => {
   textarea.style.height = 'auto';
   textarea.style.height = `${textarea.scrollHeight}px`;
 };
+
+const processSpintax = (input) => {
+  const randomPattern = /\{\{RANDOM\|([^{}]+)\}\}/g;
+  function recursiveReplace(str) {
+    const hasRandom = randomPattern.test(str);
+    if (!hasRandom) {
+      return str;
+    }
+    const processedStr = str.replace(randomPattern, (match, options) => {
+      const optionsArray = options.split('|').map(option => option.trim());
+      return `{${optionsArray.join('|')}}`;
+    });
+    return recursiveReplace(processedStr);
+  }
+  return recursiveReplace(input);
+}
 
 const generateResults = async () => {
   console.log(Constants.DEFAULT_RESULTS_COUNT)
@@ -121,19 +136,18 @@ const generateResults = async () => {
     return;
   }
 
-  // Step 1: Check for Spintax blocks without a pipe
-  const spintaxWithoutPipePattern = /\{([^\|}]+)\}/g;
-  const spintaxWithoutPipeMatches = spintaxInput.value.match(spintaxWithoutPipePattern);
-  
-  if (spintaxWithoutPipeMatches) {
-    // Change the font of the spintax block to red and underline it
-    spintaxWithoutPipeMatches.forEach(match => {
-      spintaxInput.value = spintaxInput.value.replace(match, `<span style="color: red; text-decoration: underline;">${match}</span>`);
-    });
-    store.clearSpintax();
+  const simpleSpintaxPattern = /\{([^{}]+)\}/g;
+  const randomSpintaxPattern = /\{\{RANDOM\|([^{}]+)\}\}/g;
+
+  const hasSimpleSpintax = simpleSpintaxPattern.test(spintaxInput.value);
+  const hasRandomSpintax = randomSpintaxPattern.test(spintaxInput.value);
+
+  if (hasSimpleSpintax && hasRandomSpintax) {
+    duplicate.value = true
+    errorMessage.value = "⚠️ Warning: you have used multiple different types of spintax, usually outreach tools only let you use one type of spintax at a time. For example it's either {like this|structured in this way} or {{RANDOM|structured like this|formatted like this}} but not both.";
+    return;
   }
 
-  // Step 2: Count opening and closing brackets
   let openCount = 0;
   let closeCount = 0;
   const stack = [];
@@ -174,7 +188,7 @@ const generateResults = async () => {
   }
 
   const payload = {
-    userInput: spintaxInput.value,
+    userInput: processSpintax(spintaxInput.value),
     number: Number(resultsCount.value)
   };
 
@@ -267,11 +281,24 @@ textarea {
   border: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
+}
+
+.results-list li span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.results-list li .result-text {
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .index {
   font-size: 18px;
-  margin-right: 10px;
+  margin-right: 8px;
 }
 
 .error-message {
